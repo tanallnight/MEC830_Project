@@ -2,6 +2,13 @@
 #include <EVShield.h>
 #include <EVs_NXTCam.h>
 
+#define MODE_TRANSMIT 0
+#define MODE_RECIEVE 1
+
+#define DIRECTION_LEFT 0
+#define DIRECTION_RIGHT 1
+#define DIRECTION_UNKNOWN 2
+
 #define ARM_POS_LEFT 2001
 #define ARM_POS_RIGHT 2002
 
@@ -16,12 +23,45 @@ void setup() {
   evShield.init(SH_HardwareI2C);
   evShield.bank_a.motorReset();
   evShield.bank_b.motorReset();
+  Serial.begin(9600);
 }
 
 void loop() {
 
 }
 
+/**
+   COMMS
+*/
+void setComMode(int mode) {
+  switch (mode) {
+    case MODE_TRANSMIT:
+      pinMode(8, OUTPUT);
+      pinMode(9, OUTPUT);
+      break;
+    case MODE_RECIEVE:
+      pinMode(8, INPUT);
+      pinMode(9, INPUT);
+      break;
+  }
+}
+
+int getDirection() {
+  if (digitalRead(8) == 0 && digitalRead(9) == 1) {
+    return DIRECTION_LEFT;
+  } else if (digitalRead(8) == 1 && digitalRead(9) == 0) {
+    return DIRECTION_RIGHT;
+  }
+  return DIRECTION_UNKNOWN;
+}
+
+void sendConfirmation() {
+  digitalWrite(8, HIGH);
+  digitalWrite(9, HIGH);
+  delay(10);
+  digitalWrite(8, LOW);
+  digitalWrite(9, LOW);
+}
 
 /**
    MOTOR 1 CONTROLS
