@@ -5,9 +5,10 @@
 #define MODE_TRANSMIT 0
 #define MODE_RECIEVE 1
 
-#define DIRECTION_LEFT 0
-#define DIRECTION_RIGHT 1
-#define DIRECTION_UNKNOWN 2
+#define COMMAND_IDLE 0
+#define COMMAND_LEFT 1
+#define COMMAND_RIGHT 2
+#define COMMAND_DROP 3
 
 #define LINE_Kp 150
 #define LINE_Ki 0.01
@@ -17,7 +18,7 @@
 #define LINE_THRESHOLD_LEFT_C 730
 #define LINE_THRESHOLD_RIGHT_C 730
 #define LINE_THRESHOLD_RIGHT 770
-#define LINE_MOTOR_SPEED 600
+#define LINE_MOTOR_SPEED 500
 
 #define CAN_THRESHOLD_LEFT 140
 #define CAN_THRESHOLD_RIGHT 140
@@ -26,6 +27,8 @@ int lineSensors[4];
 int distanceSensors[2];
 int leftMotorSpeed = 0;
 int rightMotorSpeed = 0;
+
+int intersections = 0;
 
 int lineError = 0;
 double lineP = 0;
@@ -41,11 +44,25 @@ int main(void) {
   initSoftSerial();
   setLCDBackLight(255);
   clrLCD();
-
+  idle();
   while (1) {
     followLine();
   }
 
+}
+
+void intersection() {
+  motor(0, 0);
+  _delay_ms(300);
+  int canDirection = getCanDirection();
+  if (canDirection == DIRECTION_LEFT) {
+    sendCommand(COMMAND_LEFT);
+  } else if (canDirection == DIRECTION_RIGHT) {
+    sendCommand(COMMAND_RIGHT);
+  }
+  _delay_ms(10000);
+  motor(500, 500);
+  _delay_ms(800);
 }
 
 /**
@@ -133,20 +150,6 @@ int getCanDirection() {
   }
 }
 
-void intersection() {
-  motor(0, 0);
-  _delay_ms(500);
-  motor(100, 100);
-  _delay_ms(200);
-  motor(0, 0);
-  int canDirection = getCanDirection();
-  clrLCD();
-  lcdPrintDec(canDirection);
-  _delay_ms(1000);
-  motor(400, 400);
-  _delay_ms(1000);
-}
-
 /**
    COMMS
 */
@@ -165,20 +168,25 @@ void idle() {
   PORTC &= ~((1 << PC4) | (1 << PC5));
 }
 
-void sendDirection(int dir) {
-  if (dir == DIRECTION_LEFT) {
-    PORTC &= ~(1 << PC4);
-    PORTC |= (1 << PC5);
-  } else {
-    PORTC &= ~(1 << PC5);
-    PORTC |= (1 << PC4);
+void sendCommand(int command) {
+  setComMode(MODE_TRANSMIT);
+  switch (command) {
+    case COMMAND_IDLE:
+      PORTC &= ~((1 << PC4) | (1 << PC5));
+      break;
+    case COMMAND_LEFT:
+      PORTC &= ~(1 << PC4);
+      PORTC |= (1 << PC5);
+      break;
+    case COMMAND_RIGHT:
+      PORTC |= (1 << PC4);
+      PORTC &= ~(1 << PC5);
+      break;
+    case COMMAND_DROP:
+      PORTC |= ((1 << PC4) | (1 << PC5));
+      break;
   }
-}
-
-bool getConfirmation() {
-  if ((PINC & (1 << PC4)) && (PINC & (1 << PC5))) {
-    return true;
-  }
-  return false;
+  _delay_ms(50);
+  idle();
 }
 
