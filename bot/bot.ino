@@ -52,17 +52,48 @@ int main(void) {
 }
 
 void intersection() {
+  switch (intersections) {
+    case 0:
+      grabIntersection();
+      break;
+    case 1:
+      dropIntersection();
+      break;
+    case 2:
+      grabIntersection();
+      break;
+    case 3:
+      dropIntersection();
+      break;
+  }
+}
+
+void grabIntersection() {
   motor(0, 0);
   _delay_ms(300);
   int canDirection = getCanDirection();
-  if (canDirection == DIRECTION_LEFT) {
+  clrLCD();
+  if (canDirection == COMMAND_LEFT) {
+    lcdPrint("LEFT");
     sendCommand(COMMAND_LEFT);
-  } else if (canDirection == DIRECTION_RIGHT) {
+  } else if (canDirection == COMMAND_RIGHT) {
+    lcdPrint("RIGHT");
     sendCommand(COMMAND_RIGHT);
   }
   _delay_ms(10000);
   motor(500, 500);
   _delay_ms(800);
+  intersections++;
+}
+
+void dropIntersection() {
+  motor(0, 0);
+  _delay_ms(300);
+  sendCommand(COMMAND_DROP);
+  _delay_ms(3000);
+  motor(500, 500);
+  _delay_ms(800);
+  intersections++;
 }
 
 /**
@@ -142,11 +173,11 @@ int getCanDirection() {
   distanceSensors[0] = analog(4);
   distanceSensors[1] = analog(6);
   if (distanceSensors[0] > CAN_THRESHOLD_LEFT) {
-    return DIRECTION_LEFT;
+    return COMMAND_LEFT;
   } else if (distanceSensors[1] > CAN_THRESHOLD_RIGHT) {
-    return (DIRECTION_RIGHT);
+    return (COMMAND_RIGHT);
   } else {
-    return DIRECTION_UNKNOWN;
+    return COMMAND_IDLE;
   }
 }
 
@@ -179,8 +210,8 @@ void sendCommand(int command) {
       PORTC |= (1 << PC5);
       break;
     case COMMAND_RIGHT:
-      PORTC |= (1 << PC4);
       PORTC &= ~(1 << PC5);
+      PORTC |= (1 << PC4);
       break;
     case COMMAND_DROP:
       PORTC |= ((1 << PC4) | (1 << PC5));

@@ -16,7 +16,7 @@
 #define MOTOR_1_SPEED 20
 #define MOTOR_1_TURN_DELAY 900
 #define MOTOR_2_SPEED 10
-#define MOTOR_2_GRAB_DELAY 1250
+#define MOTOR_2_GRAB_DELAY 1350
 
 #define COLOR_RED 5
 #define COLOR_BLUE 6
@@ -44,14 +44,24 @@ void setup() {
   nxtCam.selectObjectMode();
   nxtCam.sortSize();
   delay(1000);
+  armRight();
+  delay(500);
   setComMode(MODE_RECIEVE);
+  //blinkLed(5, 0, 255, 0);
 }
 
 void loop() {
+  //  if (evShield.getButtonState(BTN_LEFT) == true) {
+  //    grabCan();
+  //    delay(100);
+  //  } else if (evShield.getButtonState(BTN_RIGHT) == true) {
+  //    releaseCan();
+  //    delay(100);
+  //  }
   currentCommand = getCommand();
   if (currentCommand != COMMAND_IDLE) {
     switch (currentCommand) {
-      case COMMMAND_LEFT:
+      case COMMAND_LEFT:
         leftSubroutine();
         break;
       case COMMAND_RIGHT:
@@ -66,11 +76,14 @@ void loop() {
 }
 
 void leftSubroutine() {
+  evShield.bank_b.ledSetRGB(255, 255, 255);
   armLeft();
   delay(500);
   grabCan();
   delay(500);
   currentColor = getColor();
+  evShield.bank_b.ledSetRGB(0, 0, 0);
+  delay(50);
   if (currentColor == COLOR_RED) {
     evShield.bank_a.ledSetRGB(255, 0, 0);
     if (currentArmPos == ARM_POS_RIGHT) {
@@ -86,9 +99,14 @@ void leftSubroutine() {
 }
 
 void rightSubroutine() {
+  evShield.bank_a.ledSetRGB(255, 255, 255);
   armRight();
-  delay(1000);
+  delay(500);
+  grabCan();
+  delay(500);
   currentColor = getColor();
+  evShield.bank_a.ledSetRGB(0, 0, 0);
+  delay(50);
   if (currentColor == COLOR_RED) {
     evShield.bank_a.ledSetRGB(255, 0, 0);
     if (currentArmPos == ARM_POS_RIGHT) {
@@ -101,7 +119,24 @@ void rightSubroutine() {
     }
   }
   delay(2000);
-  sendConfirmation();
+}
+
+void blinkLed(int t, int R, int G, int B) {
+  bool ledState = false;
+  for (int i = 0; i < t * 2; i++) {
+    if (ledState) {
+      evShield.bank_a.ledSetRGB(0, 0, 0);
+      evShield.bank_b.ledSetRGB(0, 0, 0);
+      ledState = false;
+    } else {
+      evShield.bank_a.ledSetRGB(R, G, B);
+      evShield.bank_b.ledSetRGB(R, G, B);
+      ledState = true;
+    }
+    delay(500);
+  }
+  evShield.bank_a.ledSetRGB(0, 0, 0);
+  evShield.bank_b.ledSetRGB(0, 0, 0);
 }
 
 /**
@@ -126,7 +161,7 @@ int getCommand() {
   } else if (digitalRead(8) == 0 && digitalRead(9) == 1) {
     return COMMAND_LEFT;
   } else if (digitalRead(8) == 1 && digitalRead(9) == 0) {
-    return COMMAND_LEFT;
+    return COMMAND_RIGHT;
   } else if (digitalRead(8) == 1 && digitalRead(9) == 1) {
     return COMMAND_DROP;
   }
@@ -147,6 +182,10 @@ void sendConfirmation() {
    Camera
 */
 int getColor() {
+  if (currentArmPos != ARM_POS_LEFT) {
+    armLeft();
+  }
+  delay(500);
   nxtCam.enableTracking();
   delay(1000);
   while (1) {
@@ -210,7 +249,7 @@ void releaseCan() {
   evShield.bank_b.motorRunUnlimited(SH_Motor_1,
                                     SH_Direction_Reverse,
                                     MOTOR_2_SPEED);
-  delay(MOTOR_2_GRAB_DELAY);
+  delay(MOTOR_2_GRAB_DELAY - 100);
   evShield.bank_b.motorStop(SH_Motor_1, SH_Next_Action_BrakeHold);
 }
 
