@@ -23,10 +23,13 @@
 #define CAN_THRESHOLD_LEFT 140
 #define CAN_THRESHOLD_RIGHT 140
 
+#define GARBAGE_THRESHOLD 450
+
 int lineSensors[4];
-int distanceSensors[2];
+int distanceSensors[3];
 int leftMotorSpeed = 0;
 int rightMotorSpeed = 0;
+int frontSensor = 0;
 
 int intersections = 0;
 
@@ -37,20 +40,38 @@ double lineD = 0;
 double linePreviousError = 0;
 double linePIDVal = 0;
 
+boolean ledsOn = false;
+
 int main(void) {
 
   initADC();
   initMotor();
+  initLEDs();
+  DDRD &= ~((1 << PD3) | (1 << PD4) | (1 << PD5));
+  PORTD |= 0b00111000;
+  PORTB |= 0b00000000;
   initSoftSerial();
   setLCDBackLight(255);
   clrLCD();
   idle();
   while (1) {
-    followLine();
+    frontSensor = analog(5);
+    if (frontSensor >= GARBAGE_THRESHOLD) {
+      clrLCD();
+      motor(0, 0);
+      lcdPrint("GARBAGE");
+      beep(500, 1000000);
+      flashLEDS();
+      _delay_ms(500);
+    } else {
+      followLine();
+    }
   }
-
 }
 
+/**
+   OPERATIONS
+*/
 void intersection() {
   switch (intersections) {
     case 0:
@@ -94,6 +115,24 @@ void dropIntersection() {
   motor(500, 500);
   _delay_ms(800);
   intersections++;
+}
+
+void initLEDs() {
+  DDRB |= (1 << PB0) | (1 << PB1) | (1 << PB2) | (1 << PB3) | (1 << PB4) | (1 << PB5) ;
+  DDRD |= (1 << PD6) | (1 << PD7) ;
+}
+
+void flashLEDS() {
+  if (ledsOn) {
+    PORTB &= ~((1 << PB0) | (1 << PB1) | (1 << PB2) | (1 << PB3) | (1 << PB4) | (1 << PB5));
+    PORTD &= ~((1 << PD6) | (1 << PD7));
+    ledsOn = false;
+  } else {
+    ledsOn = true;
+    PORTB |= (1 << PB0) | (1 << PB1) | (1 << PB2) | (1 << PB3) | (1 << PB4) | (1 << PB5);
+    PORTD |= (1 << PD6) | (1 << PD7) ;
+  }
+  _delay_ms(500);
 }
 
 /**
@@ -157,16 +196,19 @@ void PIDMotorControl(int motorSpeed, double pidVal) {
 }
 
 /**
-   CAN SENSING
+   CAN/GARBAGE SENSING
 */
 void printDistanceVals() {
   distanceSensors[0] = analog(4);
-  distanceSensors[1] = analog(6);
+  distanceSensors[1] = analog(5);
+  distanceSensors[2] = analog(6);
   clrLCD();
   moveLCDCursor(0);
   lcdPrintDec(distanceSensors[0]);
   moveLCDCursor(8);
   lcdPrintDec(distanceSensors[1]);
+  moveLCDCursor(16);
+  lcdPrintDec(distanceSensors[2]);
 }
 
 int getCanDirection() {
