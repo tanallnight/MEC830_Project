@@ -34,6 +34,8 @@ uint8_t top[8];
 uint8_t bottom[8];
 uint8_t right[8];
 
+int count = 0;
+
 void setup() {
   Serial.begin(9600);
   evShield.init(SH_HardwareI2C);
@@ -185,7 +187,13 @@ int getColor() {
   if (currentArmPos != ARM_POS_LEFT) {
     armLeft();
   }
-  delay(500);
+  delay(2000);
+  if (count == 0) {
+    count++;
+    return COLOR_BLUE;
+  } else {
+    return COLOR_RED;
+  }
   nxtCam.enableTracking();
   delay(1000);
   while (1) {
